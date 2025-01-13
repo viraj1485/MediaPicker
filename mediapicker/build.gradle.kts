@@ -60,7 +60,7 @@ afterEvaluate {
         publications {
             create<MavenPublication>("release") {
                 from(components["release"])
-                groupId = "com.github.viraj"
+                groupId = "com.github.viraj1485"
                 artifactId = "media-picker"
                 version = "1.0"
             }
