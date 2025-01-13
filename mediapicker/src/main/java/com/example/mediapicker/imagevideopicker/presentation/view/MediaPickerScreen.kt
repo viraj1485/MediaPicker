@@ -4,6 +4,8 @@ import android.app.Activity
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -72,12 +74,22 @@ fun MediaPickerScreen(
     onMediaClick: (MediaFile) -> Unit,
     onContinueButtonClick: (List<MediaFile>) -> Unit
 ) {
-
     val context = LocalContext.current
 
     val factory = MediaViewModelFactory(context.contentResolver)
 
     val mediaViewModel: MediaViewModel = viewModel(factory = factory)
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val allGranted = permissions.all { it.value }
+            if (allGranted) {
+                mediaViewModel.onAction(MediaTabScreenEvents.OnImageTabClick)
+            }
+        }
+    )
+
 
     val selectedMediaType = mediaViewModel.selectedMediaType.collectAsState()
     val dataList = mediaViewModel.mediaFlow.collectAsState().value.collectAsLazyPagingItems()
@@ -101,22 +113,22 @@ fun MediaPickerScreen(
         mediaViewModel.updateLongClick(false)
     }
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ActivityCompat.requestPermissions(
-            context as Activity,
-            arrayOf(
-                android.Manifest.permission.READ_MEDIA_IMAGES,
-                android.Manifest.permission.READ_MEDIA_VIDEO,
-                android.Manifest.permission.READ_MEDIA_AUDIO
-            ),
-            100
-        )
-    } else {
-        ActivityCompat.requestPermissions(
-            context as Activity,
-            arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
-            100
-        )
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Request multiple permissions for Android Tiramisu (API 33) and above
+            permissionLauncher.launch(
+                arrayOf(
+                    android.Manifest.permission.READ_MEDIA_IMAGES,
+                    android.Manifest.permission.READ_MEDIA_VIDEO,
+                    android.Manifest.permission.READ_MEDIA_AUDIO
+                )
+            )
+        } else {
+            // Request legacy READ_EXTERNAL_STORAGE permission for older versions
+            permissionLauncher.launch(
+                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            )
+        }
     }
 
 
